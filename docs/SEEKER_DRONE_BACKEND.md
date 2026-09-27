@@ -44,3 +44,17 @@ can register a working backend, the following must be found and validated:
 Do not register `World.spawn_unit` as a provider named
 `game.entity.spawn_throwable`: the live test showed that would advertise a
 capability the game does not actually have.
+
+Follow-up live checks also found `stingray.EntityManager.spawn`, but the
+equipped G-50's `Application.can_get('entity', ...)` returned `false`; the
+guarded probe therefore did not call that function. The available G-50 unit
+resource is not a spawnable `.entity` resource through this interface.
+
+The native `ProjectileWeaponComponentData` table offers a different lead:
+its `projectile_entity` field instructs a firing weapon to spawn an entity.
+The machine-gun Guard Dog weapon currently has this field set to zero.
+A read-only in-process check found an exact SHA-256 match between the current
+game's complete 176,224-byte projectile-weapon component data and Filediver's
+embedded snapshot. This validates the table contents for this game build, but
+does not identify the active writable record or show that replacing the field
+would initialize the G-50 seeker. No such patch has been installed or tested.

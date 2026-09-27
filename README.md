@@ -12,6 +12,8 @@
 
 The [seeker drone backend findings](docs/SEEKER_DRONE_BACKEND.md) document the
 native game interfaces still required before a working drone can be released.
+The [seeker drone prototype](addons/seeker_drone/README.md) contains the
+inventory rules and reversible runtime probes; it is not an installable drone mod.
 
 > [!IMPORTANT]
 > **Required dependency for Armory Preview Cache, Know Your Constellation, Controllable Hover Pack, Vehicle Stability, Enemy Collision Synchronized, Vanilla Plus Megapack or the separate Better Stratagem Bounce, Hellpod Steering Unlocked, Reinforcement Beacons Fixed, Consistent Vaulting, Shallow Water Diving and Sentry Aim Retention mods.** Install with **Arsenal or HD2MM**: import `Bingus-Shared-Loader-v18.zip`, enable it alongside the megapack or your chosen mods, then click **Deploy**. One loader installation supports all your selected mods.
