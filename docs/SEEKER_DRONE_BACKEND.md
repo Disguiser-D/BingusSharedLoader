@@ -38,16 +38,34 @@ function created an inert G-50 model. No normal player's throw was traced to
 any of these functions. The development probe is
 `addons/seeker_drone/funcinfo_probe.lua`; it only records function addresses.
 
-An offline resource-override check found no direct substitute for the failed
-runtime weapon-table edit.
+An initial resource-override check with
 [Filediver v0.7.55](https://github.com/xypwn/filediver/releases/tag/v0.7.55)
-listed no `dl_bin` resources in
-the installed game archives, and no file matching `*generated_entities*`.
-The loader's current archive writer emits Lua resources only. These results do
-not prove that all compiled gameplay data are unmodifiable, but they provide
-no verified archive target for replacing the `ProjectileWeaponComponentData`
-table at load time. Do not publish a guessed `dl_bin` override as a seeker
-spawn backend.
+found no `dl_bin` entry in the game **archives**. A complete read-only dump of
+the loaded `game.dll` corrected the scope of that result: its function at RVA
+`0xFDB440` explicitly requests `generated_entities.dl_bin`, and the current
+installation has this as a loose file at `data/game/generated_entities.dl_bin`.
+The file is 46,612,636 bytes and its current SHA-256 is
+`7DF1A07E90C61E0B8398ECBC5C088074655900943BF1CD7E09F69BCCEDEC4A2A`.
+Its bytes are high-entropy and have no plaintext `DLDL` header. Filediver's
+embedded decoded snapshot is 46,612,588 bytes with a `DLDL` header; the
+verified current-build projectile-weapon subtable matches that snapshot, but
+this does not establish that the entire decoded file is identical. The extra
+48 bytes and differing encoding mean a modified plaintext snapshot cannot
+simply be substituted for the installed file. The loader's archive writer
+emits Lua resources only. No verified load-time encoding or safe overlay path
+exists yet; the installed file has not been edited.
+The live image used for this offline analysis was 74,727,424 bytes, with no
+unreadable pages, and was kept only in ignored local development artifacts.
+
+The complete image also allowed a focused heavy-target search. References to
+`tag_spot_enemy_gen_character_heavy` and
+`tag_spot_enemy_anyfac_patrol_heavy` are in a hash-to-string lookup, not a
+function accepting a target. The `TargetingComponent` name leads to component
+storage growth/copy code; `BugArmored` is among spawn-configuration labels.
+No checked candidate both accepts an actual target and returns a heavy-target
+boolean. This does not establish that such logic is absent, but G-60 must
+remain disabled until that exact gate is demonstrated. Unit-size enums and
+armor-penetration fields do not satisfy the required boolean result.
 
 The next useful experiment requires a concrete native boundary: capture one
 normal player's G-50 throw, filtered by resource hash
