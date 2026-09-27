@@ -24,6 +24,8 @@ assert(m:entity_gone('c'))
 local failed = m:begin_launch('g60')
 assert(failed)
 assert(not m:finish_launch(failed, nil))
+assert(not m:finish_launch(failed, false))
+assert(not m:finish_launch(failed, true))
 assert(m:cancel_launch(failed))
 assert(m.drone.g60 == 99)
 
@@ -92,6 +94,8 @@ assert(launches.g50 == 1 and launches.g60 == 1 and #created == 5)
 assert(auto:entity_gone('g50-2'))
 local before = auto.drone.g50
 launches = auto:maintain(function() return nil end)
+assert(launches.g50 == 0 and auto.drone.g50 == before)
+launches = auto:maintain(function() return false end)
 assert(launches.g50 == 0 and auto.drone.g50 == before)
 assert(auto:reconcile(function(entity)
     if entity == 'g50-4' then return false end

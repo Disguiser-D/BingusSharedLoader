@@ -55,7 +55,8 @@ end
 
 function Inventory:finish_launch(token, entity_id)
     local kind = self.pending[token]
-    if not kind or entity_id == nil or self.entities[entity_id] then return false end
+    if not kind or entity_id == nil or type(entity_id) == 'boolean'
+        or self.entities[entity_id] then return false end
     self.pending[token] = nil
     self.entities[entity_id] = kind
     self.airborne[kind] = self.airborne[kind] + 1
