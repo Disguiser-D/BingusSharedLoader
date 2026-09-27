@@ -98,7 +98,7 @@ if type(previous)=='function' then
         local ok,now=pcall(function() return app.time_since_launch() end)
         if ok and type(now)=='number' then
             state.started=state.started or now
-            if now-state.started<180 and
+            if now-state.started<600 and
                 (not state.last_sample or now-state.last_sample>=0.1) then
                 state.last_sample=now
                 local sampled,reason=pcall(sample,engine,now)
