@@ -184,3 +184,20 @@ G-60。v4 探针改为每 0.1 秒检查全部游戏世界，并且只在状态�
 不会生成追踪雷；其 ZIP 不属于可安装的正式 Mod。
 `src/flight_state.lua` 因此只给出三值候选判定：主层状态 0–3 为活动中、
 4 为退出中，API 缺失或异常时返回 `nil`，让弹药模块保留占位。
+
+## 原生生成链路补充核对
+
+只读导出当前游戏版本的 G-50 与 G-60 `.unit` 主数据后，确认两者分别约
+13.6 KiB 与 14.5 KiB；其中有状态机资源引用，但未发现可读的 Flow 脚本或
+玩法组件定义。[Filediver 的 `.unit` 解析器](https://github.com/xypwn/filediver/blob/master/stingray/unit/unit.go)
+也只把这类数据解析为模型、骨骼、材质和状态机信息。因此即使通过 Lua
+`World.spawn_unit` 创建相同的 `.unit`，也不能据此推断游戏已创建追踪雷的
+`ThrowableComponentData`、寻敌和联机对象；实机的静止单位结果与这一限制一致。
+
+官方 [Stingray EntityManager 文档](https://help.autodesk.com/cloudhelp/ENU/Stingray-Help/lua_ref/ns_stingray_EntityManager.html)
+说明 `create` 只创建无组件空实体，`spawn` 则要求可加载的 `.entity` 资源；
+实机已确认当前 G-50 的 `can_get('entity', ...)` 为 `false`。
+[GameSession 文档](https://help.autodesk.com/cloudhelp/ENU/Stingray-Help/lua_ref/obj_stingray_GameSession.html)
+说明 `create_game_object` 创建的是按 `.network_config` 类型同步的字段表，
+也不是自动初始化 Helldivers 2 玩法组件的入口。这些通用引擎 API 暂不能
+替代游戏自己的追踪雷投掷/生成流程。
