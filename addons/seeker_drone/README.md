@@ -166,6 +166,15 @@ G-60。v4 探针改为每 0.1 秒检查全部游戏世界，并且只在状态�
 表外记录。此结果不能排除运行时组件以不同结构存储，但说明继续按原始
 `ProjectileWeaponComponent` 字节序列查找活跃副本不会得到更直接的入口。
 
+另对当前 `game.dll` 的 `get_plugin_api` 导出进行运行时只读核对：其代码仅在
+API ID 为 0 时返回标准插件回调表，其他 ID 返回空指针。回调表包含
+`setup_game`、`units_spawned` 等标准生命周期入口；这不是一个可直接按
+API ID 查询的 Helldivers 2 专用追踪雷生成服务。此处依据
+[Stingray 插件 API 约定](https://help.autodesk.com/cloudhelp/ENU/Stingray-SDK-Help/sdk_help/extend_engine.html)
+和 [官方 SDK 头文件](https://github.com/AutodeskGames/stingray-plugin-api-samples/blob/master/stingray_sdk/engine_plugin_api/plugin_api.h)
+解释函数签名与回调表。继续做原生接入需要识别游戏内部玩法函数及其对象、
+所有权和联机约束，不能把标准插件回调直接当作生成器。
+
 已准备只读 `api_probe.lua`，在下一次任务内枚举 Lua 可见的目标、装甲和武器接口，
 以寻找真正的重甲 `true` 判定和投掷物激活入口。它不调用这些接口，也不创建实体。
 
