@@ -1,6 +1,8 @@
 -- Experimental single-drone locator for a prototype that occupies the
 -- existing machine-gun Guard Dog slot. It never assumes ownership when
 -- multiple matching drones are present in the world.
+-- One matching drone is not proof of local-player ownership either; this
+-- locator may only supply a read-only diagnostic position, never gameplay.
 local Context = {}
 local DRONE = 'content/fac_helldivers/equipment/backpacks/drone_mg/drone_mg'
 

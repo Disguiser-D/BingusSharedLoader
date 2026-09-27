@@ -57,6 +57,31 @@ requires a verified G-50/G-60 gameplay spawn and lifecycle interface.
 No replacement of this sealed settings file or memory patch is currently
 deployed.
 
+The checked ID `73` record is 400 bytes at decoded file offset `2444`
+(first DL block, sixth entry). Its call-in sequence is `[3,1,4,1,2,3]`,
+spawn time `5`, cooldown `480`, category `2` (hellpod deployment),
+call-in type `0` (throw), and enabled flag `1`. Its payload references
+`0x0807D288AD22601B` (`weapon_rack_drone_mg`) and
+`0x73F8498BFFDCF415` (`hellpod_payload`). The associated loadout package
+hash is `0xBE6C260FADCB8719`
+(`packages/generated/loadout/drone_mg_backpack`). The backpack entity hash
+`0x255EBC5767D7CEEC` has Deposit capacity/start/refill `8/8/8`, refill
+style Ammo, and drone path hash `0xA0FF2F9A0CA6992A`. These links establish
+the original delivery/resource chain, not a verified way to bind a Lua
+controller to the local player's own pack or to intercept docking and supply.
+`World.units_by_resource` can enumerate matching backpack/drone Units, but
+the current single-Guard-Dog locator does not prove that the sole instance
+belongs to the local player. The public
+[Stingray Unit API](https://help.autodesk.com/cloudhelp/2021/DEU/Max-Interactive-Help/lua_ref/obj_stingray_Unit.html)
+defines `Unit.scene_graph_parent` as the parent **node inside that same Unit**;
+it is not a backpack-to-player or drone-to-backpack ownership query.
+The [World API](https://help.autodesk.com/cloudhelp/2021/PTB/Max-Interactive-Help/lua_ref/obj_stingray_World.html)
+documents cross-Unit linking but no read-only reverse-parent function in the
+checked public reference. The game's local-player binding, dock transition,
+and supply event still need their own verified signals. The original MG weapon
+also must be suppressed or replaced before a fallback could behave like a
+seeker-only drone; that has not been implemented.
+
 The proposed **read-only API-table gate** has been completed. In the supported
 live build, `game.dll` `setup_game` (RVA `0x4EE160`) calls a helper at RVA
 `0x4EDA90` with `get_engine_api`; the helper requests ID 31 and stores its

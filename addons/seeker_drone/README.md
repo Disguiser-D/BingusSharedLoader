@@ -52,7 +52,8 @@
 `src/resource_loader.lua` 预备了加载两种原版投掷物资源包的非阻塞流程；
 它同样尚未部署或实机验证，卸载前必须确认相关单位都已消失。
 `src/drone_context.lua` 仅供“暂时占用机枪护卫犬位置”的实验路径使用：
-只有世界中恰好一架匹配无人机时才返回其位置，多架时不会猜测本地玩家的那架。
+只有世界中恰好一架匹配无人机时才返回其位置，多架时不会猜测本地玩家的那架；
+即使恰好一架也没有证明归属，因此不能把该位置用于正式发射逻辑。
 
 [Filediver 的 `DepositComponent` 解析器](https://github.com/xypwn/filediver/blob/master/datalibrary/deposit_component.go)
 显示原版背包数据有一组 `Capacity`、`RefillAmount` 和 `DronePath` 字段；
