@@ -186,6 +186,25 @@ but it does not identify the throw-action call stack or prove how seeker AI
 starts. The game was then closed; no code hook, game file edit, or remote
 diagnostic file was installed.
 
+An additional read-only analysis found that the weapon-fire path can use a
+per-instance `ProjectileWeaponComponentData` override. `game.dll` RVA
+`0x515100` first looks up the weapon's 32-bit instance ID in a runtime index
+at global RVA `0x33266D8`; a hit returns a 616-byte runtime record. Only a
+miss falls back to the raw resource-hash table through RVA `0x514C10`.
+The runtime index stores 8-byte `{instance ID, record index}` entries and
+uses 32-bit multiplication, a power-of-two mask, and linear probing. The
+runtime record's `ProjectileEntity` remains at offset `+0x28`. A separate
+path copies raw configuration and applies entity deltas when building a
+runtime record. This creates a plausible explanation for why temporarily
+changing every byte-identical raw Guard Dog record during firing did not
+produce G-50: an active weapon override could have taken precedence. It is
+**not yet established** that the machine-gun Guard Dog weapon has such an
+override in a mission. The optional `--guard-dog-runtime` mode in the
+read-only ring diagnostic is prepared to check that exact weapon instance,
+with before/after consistency checks; it has not yet produced a live result.
+The lookup does not itself prove that changing either record would create an
+active seeker.
+
 The bundled Filediver bulk projectile-weapon parser is unsuitable for this
 field comparison: its Go struct reads 388 bytes per record while the current
 DL type and native lookup use 616. A separate full-entity parse of original

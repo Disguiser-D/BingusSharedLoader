@@ -7,6 +7,7 @@ It does not call game functions, inject code, or alter game files or memory.
 
 import argparse
 import ctypes as C
+import hashlib
 import json
 import struct
 import subprocess
@@ -24,6 +25,11 @@ SEEKERS = {
     0x2D398D1EC35E0838: 'g50',
     0x8E325C933E55BF62: 'g60',
 }
+GUARD_DOG_WEAPON = 0xA32621E3BDE13379
+RUNTIME_WEAPON_STORE_RVA = 0x33266D8
+INVALID_INSTANCE_RVA = 0x3483C24
+WEAPON_RECORD_SIZE = 616
+GUARD_DOG_RECORD_INDEX = 188
 
 
 def game_pid():
@@ -89,13 +95,78 @@ def process_reader():
         kernel.CloseHandle(handle)
 
 
-def records(buffer):
+def records(buffer, include_guard_dog=False):
     for slot in range(RING_SLOTS):
         resource, instance_id, word_0c, word_10, flag_14 = struct.unpack_from(
             '<QIIII', buffer, slot * RECORD_SIZE)
         kind = SEEKERS.get(resource)
+        if include_guard_dog and resource == GUARD_DOG_WEAPON:
+            kind = 'guard_dog_weapon'
         if kind:
             yield (slot, kind, instance_id, word_0c, word_10, flag_14)
+
+
+def guard_dog_runtime(read, base, entity_manager, slot, instance_id):
+    """Inspect the versioned 0x515100 override lookup without calling it."""
+    entity_address = entity_manager + RING_DATA_OFFSET + slot * RECORD_SIZE
+    entity_before = read(entity_address, RECORD_SIZE)
+    if struct.unpack_from('<QI', entity_before) != (GUARD_DOG_WEAPON, instance_id):
+        raise RuntimeError('Guard Dog weapon record changed before lookup')
+    table = struct.unpack('<Q', read(entity_manager + 0xF12E80, 8))[0]
+    if not table:
+        raise RuntimeError('projectile weapon table unavailable')
+    raw_record = read(table + 0x21E0 + GUARD_DOG_RECORD_INDEX * WEAPON_RECORD_SIZE,
+                      WEAPON_RECORD_SIZE)
+    raw_projectile = struct.unpack_from('<Q', raw_record, 0x28)[0]
+    invalid_id = struct.unpack('<I', read(base + INVALID_INSTANCE_RVA, 4))[0]
+    report = {'event': 'guard_dog_runtime', 'instance_id': instance_id,
+              'raw_projectile_entity': f'{raw_projectile:#018x}',
+              'override': False}
+    store = struct.unpack('<Q', read(base + RUNTIME_WEAPON_STORE_RVA, 8))[0]
+    validation = []
+    if instance_id != invalid_id and store:
+        metadata = read(store + 0x90, 0x48)
+        slots = struct.unpack_from('<Q', metadata, 0)[0]
+        count, sentinel, multiplier = struct.unpack_from('<III', metadata, 8)
+        used = struct.unpack_from('<I', metadata, 0x38)[0]
+        record_base = struct.unpack_from('<Q', metadata, 0x40)[0]
+        if not count or count > 65536 or count & (count - 1):
+            raise RuntimeError('runtime weapon index size invalid')
+        if not slots:
+            raise RuntimeError('runtime weapon index pointer missing')
+        start = (instance_id * multiplier & 0xFFFFFFFF) & (count - 1)
+        for probe in range(count):
+            lookup_slot = (start + probe) & (count - 1)
+            index_address = slots + lookup_slot * 8
+            entry = read(index_address, 8)
+            validation.append((index_address, entry))
+            key, index = struct.unpack('<II', entry)
+            if key == instance_id:
+                if index == 0xFFFFFFFF:
+                    break
+                if index >= used or used > 65536:
+                    raise RuntimeError('runtime weapon record index invalid')
+                if not record_base:
+                    raise RuntimeError('runtime weapon records pointer missing')
+                record_address = record_base + index * WEAPON_RECORD_SIZE
+                record = read(record_address, WEAPON_RECORD_SIZE)
+                report.update({'override': True, 'record_index': index,
+                               'projectile_entity':
+                               f'{struct.unpack_from("<Q", record, 0x28)[0]:#018x}',
+                               'record_sha256': hashlib.sha256(record).hexdigest()})
+                validation.append((record_address, record))
+                break
+            if key == sentinel:
+                break
+        if read(store + 0x90, 0x48) != metadata:
+            raise RuntimeError('runtime weapon store changed during lookup')
+    if (read(entity_address, RECORD_SIZE) != entity_before
+            or read(entity_manager + 0xF12E80, 8) != struct.pack('<Q', table)
+            or read(base + RUNTIME_WEAPON_STORE_RVA, 8) != struct.pack('<Q', store)
+            or any(read(address, len(value)) != value
+                   for address, value in validation)):
+        raise RuntimeError('Guard Dog weapon lookup changed during read')
+    return report
 
 
 def main():
@@ -104,6 +175,8 @@ def main():
                         help='poll duration after the first successful read')
     parser.add_argument('--interval', type=float, default=0.25,
                         help='poll interval in seconds')
+    parser.add_argument('--guard-dog-runtime', action='store_true',
+                        help='also inspect active Guard Dog weapon overrides')
     args = parser.parse_args()
     if not 0 <= args.seconds <= 300 or not 0.1 <= args.interval <= 5:
         parser.error('duration or interval out of range')
@@ -112,6 +185,7 @@ def main():
         changes = 0
         start = time.monotonic()
         ready = False
+        inspected_weapons = set()
         while True:
             manager = struct.unpack('<Q', read(base + MANAGER_POINTER_RVA, 8))[0]
             if manager:
@@ -125,7 +199,8 @@ def main():
                           flush=True)
                     ready = True
                 current = {}
-                for slot, kind, instance_id, word_0c, word_10, flag_14 in records(ring):
+                for slot, kind, instance_id, word_0c, word_10, flag_14 in records(
+                        ring, args.guard_dog_runtime):
                     signature = (kind, instance_id, word_10, flag_14)
                     current[slot] = signature
                     if previous.get(slot) != signature:
@@ -139,6 +214,18 @@ def main():
                             'flag_14': flag_14,
                             'initial': initial,
                         }), flush=True)
+                    if (kind == 'guard_dog_weapon' and instance_id
+                            and instance_id not in inspected_weapons):
+                        try:
+                            report = guard_dog_runtime(
+                                read, base, manager, slot, instance_id)
+                        except RuntimeError as error:
+                            print(json.dumps({'event': 'lookup_retry',
+                                              'instance_id': instance_id,
+                                              'reason': str(error)}), flush=True)
+                        else:
+                            inspected_weapons.add(instance_id)
+                            print(json.dumps(report), flush=True)
                 for slot in previous.keys() - current.keys():
                     changes += 1
                     print(json.dumps({'event': 'slot_lost', 'slot': slot,
