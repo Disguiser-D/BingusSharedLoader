@@ -31,6 +31,7 @@ INVALID_INSTANCE_RVA = 0x3483C24
 WEAPON_RECORD_SIZE = 616
 GUARD_DOG_RECORD_INDEX = 188
 RAW_WEAPON_MAP_SLOTS = 542
+RAW_WEAPON_TABLE_SIZE = 176252
 
 
 def game_pid():
@@ -186,6 +187,32 @@ def guard_dog_runtime(read, base, entity_manager, slot, instance_id):
     return report
 
 
+def raw_table_identity(read, entity_manager):
+    """Fingerprint the actual entity-manager table, including its DL header."""
+    table = struct.unpack('<Q', read(entity_manager + 0xF12E80, 8))[0]
+    if table < 28:
+        raise RuntimeError('projectile weapon table unavailable')
+    digest = hashlib.sha256()
+    header = b''
+    for offset in range(0, RAW_WEAPON_TABLE_SIZE, 4096):
+        size = min(4096, RAW_WEAPON_TABLE_SIZE - offset)
+        try:
+            block = read(table - 28 + offset, size)
+        except RuntimeError:
+            return {'event': 'raw_table_identity',
+                    'table_address': f'{table:#018x}',
+                    'unreadable_offset': offset}
+        if offset == 0:
+            header = block[:8]
+        digest.update(block)
+    if read(entity_manager + 0xF12E80, 8) != struct.pack('<Q', table):
+        raise RuntimeError('projectile weapon table changed during read')
+    return {'event': 'raw_table_identity',
+            'table_address': f'{table:#018x}',
+            'header': header.hex(),
+            'sha256': digest.hexdigest()}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--seconds', type=float, default=0,
@@ -196,6 +223,8 @@ def main():
                         help='also inspect active Guard Dog weapon overrides')
     parser.add_argument('--pid', type=int,
                         help='specific game process ID when more than one exists')
+    parser.add_argument('--table-identity', action='store_true',
+                        help='fingerprint the entity manager\'s active raw weapon table')
     args = parser.parse_args()
     if not 0 <= args.seconds <= 300 or not 0.1 <= args.interval <= 5:
         parser.error('duration or interval out of range')
@@ -207,9 +236,14 @@ def main():
         start = time.monotonic()
         ready = False
         inspected_weapons = set()
+        inspected_table = False
         while True:
             manager = struct.unpack('<Q', read(base + MANAGER_POINTER_RVA, 8))[0]
             if manager:
+                if args.table_identity and not inspected_table:
+                    print(json.dumps(raw_table_identity(read, manager)),
+                          flush=True)
+                    inspected_table = True
                 next_slot = struct.unpack('<I', read(manager + RING_NEXT_OFFSET, 4))[0]
                 if next_slot >= RING_SLOTS:
                     raise RuntimeError('entity ring index out of range')

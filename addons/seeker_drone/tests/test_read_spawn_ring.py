@@ -1,6 +1,7 @@
 """Synthetic checks for the read-only native weapon-index decoder."""
 
 import importlib.util
+import hashlib
 from pathlib import Path
 import struct
 import unittest
@@ -84,6 +85,29 @@ class RuntimeLookupTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'changed during read'):
             ring.guard_dog_runtime(changing_read, self.base, self.manager,
                                    self.slot, self.instance_id)
+
+    def test_table_fingerprint_and_unreadable_page(self):
+        data = bytes(index % 251 for index in range(ring.RAW_WEAPON_TABLE_SIZE))
+        start = self.table - 28
+
+        def read_table(address, size):
+            if address == self.manager + 0xF12E80:
+                return struct.pack('<Q', self.table)
+            offset = address - start
+            if offset < 0 or offset + size > len(data):
+                raise RuntimeError('unreadable')
+            return data[offset:offset + size]
+
+        report = ring.raw_table_identity(read_table, self.manager)
+        self.assertEqual(report['sha256'], hashlib.sha256(data).hexdigest())
+
+        def partial_read(address, size):
+            if address == start + 4096:
+                raise RuntimeError('unreadable')
+            return read_table(address, size)
+
+        report = ring.raw_table_identity(partial_read, self.manager)
+        self.assertEqual(report['unreadable_offset'], 4096)
 
 
 if __name__ == '__main__':
