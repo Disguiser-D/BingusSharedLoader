@@ -221,6 +221,26 @@ targeting. The creation request, owner/network contract, and any throw-action
 transition remain unverified. Calling `0xFDC140` directly from LuaJIT FFI
 would therefore be unsafe and would not yet prove G-50 or G-60 activation.
 
+Further offline review found a request-head builder at RVA `0x9A6630` that
+sets flags, `0x7FFF` at `+4`, a default transform, and auxiliary fields in a
+`0x58B`-byte request. It leaves the per-component pointer at `+0x48` null;
+its caller at `0x9A784F` fills that field separately. This builder cannot
+serve as a ready-made G-50/G-60 constructor. RVA `0x6C5BC0` accepts an
+**already existing** entity ID plus direction/physics data and proceeds to
+motion activation; it does not accept a resource hash or create the entity.
+RVA `0x6C77E0` also works with an existing ID and has not been verified as
+the player's throw action. A tempting pair of creation/activation calls at
+`0xA910AF` and `0xA91566` was ruled out for these seekers: its resource is
+hard-coded to `0x16F397CA5F51F271`, not either seeker hash.
+
+Thus the normal player's G-50 throw still has no confirmed creation callsite,
+owner contract, or reusable complete request. A bounded future trace would
+need to correlate one G-50 resource hash at `0xFDC140` with the **same**
+instance ID at `0x6C5BC0`, capture only the needed request fields and caller,
+then explain how the game builds them. A ring record alone cannot supply the
+historical call stack or initialization pointers; replaying a captured stack
+buffer from Lua is not a valid backend. No such trace is currently deployed.
+
 A lower-impact live check can read the entity manager's existing 2,048-entry
 creation ring at `+0xF32F18`: each 24-byte record stores a resource hash and
 instance ID. The read-only diagnostic
