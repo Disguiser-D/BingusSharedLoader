@@ -80,3 +80,11 @@ four while the equipped Guard Dog fired in a mission. It scanned about 4.3 GB
 and 5.8 GB of private writable memory respectively. No separate byte-identical
 runtime component was found. The game may use a transformed component layout,
 so this does not identify the native creation function.
+
+The current `game.dll` export `get_plugin_api` was inspected in live process
+memory without invoking it. It returns a standard Stingray `PluginApi` table
+only for API ID 0 and returns null for other IDs. The table contains engine
+lifecycle callbacks such as `setup_game` and `units_spawned`; it is not a
+queryable Helldivers 2 throwable-creation API. The interpretation uses the
+[Stingray engine plugin contract](https://help.autodesk.com/cloudhelp/ENU/Stingray-SDK-Help/sdk_help/extend_engine.html)
+and [SDK header](https://github.com/AutodeskGames/stingray-plugin-api-samples/blob/master/stingray_sdk/engine_plugin_api/plugin_api.h).
