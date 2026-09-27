@@ -1,3 +1,9 @@
+# Unreleased (Disguiser-D `dev`)
+
+- Add an optional, versioned gameplay-capability broker for independently supplied addons. Missing native game capabilities remain explicitly unavailable.
+- Add lazy update subscriptions with per-subscriber failure isolation and no per-frame work when unused; preserve the original callback's arguments and return values.
+- Document the verified G-50/G-60 drone backend boundary. The new loader interface does not yet activate native throwable entities or register a new stratagem.
+
 # v18
 
 - Raise the game's shared LuaJIT code cache before any mod starts: 16 MB of machine code and 8,000 traces instead of the game's 512 KB and 1,000, shared by the game and every mod. Filling either limit made LuaJIT discard all compiled code at once and recompile it during play.

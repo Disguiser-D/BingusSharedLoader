@@ -34,9 +34,14 @@ local function write_log()
     pcall(function()
         local file = state.open_log('BingusSharedLoader.log')
         if not file then return end
-        file:write('Bingus Shared Loader loader-v18; API 1\n')
+        file:write('Bingus Shared Loader loader-v18-dev; API 1\n')
         if state.discovery then file:write('Discovery: ' .. state.discovery .. '\n') end
         if jit_cache then file:write(jit_cache.describe() .. '\n') end
+        if state.gameplay then
+            for _, issue in ipairs(state.gameplay.errors) do
+                file:write('Gameplay API: ' .. issue .. '\n')
+            end
+        end
         for module, result in pairs(state.modules) do
             file:write(module .. ': ' .. result .. '\n')
         end
@@ -61,6 +66,16 @@ if jit_budget then
     else
         state.jit = {managed = false, reason = tostring(cache)}
     end
+end
+
+-- The builder embeds src/gameplay_api.lua. Direct-source legacy tests can
+-- still run this coordinator without the optional API implementation.
+if gameplay_api then
+    local ok, api_or_error = pcall(gameplay_api.start, state, _G, function(kind, owner, reason)
+        print('[BingusSharedLoader] Gameplay API ' .. kind .. ' ' .. owner .. ': ' .. tostring(reason))
+        write_log()
+    end)
+    if not ok then state.gameplay_error = tostring(api_or_error) end
 end
 
 local application = stingray and stingray.Application

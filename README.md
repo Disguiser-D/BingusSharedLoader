@@ -4,6 +4,15 @@
 
 # Bingus Shared Loader
 
+> **Fork `dev` status:** This branch is testing an optional gameplay-capability
+> broker and lazy update subscriptions for addon authors. It does not yet add
+> native throwable activation, heavy-target checks, or a new-stratagem registry.
+> The existing loader API marker remains `1`; builds from this branch are named
+> `v18-dev`, and live-game validation is pending.
+
+The [seeker drone backend findings](docs/SEEKER_DRONE_BACKEND.md) document the
+native game interfaces still required before a working drone can be released.
+
 > [!IMPORTANT]
 > **Required dependency for Armory Preview Cache, Know Your Constellation, Controllable Hover Pack, Vehicle Stability, Enemy Collision Synchronized, Vanilla Plus Megapack or the separate Better Stratagem Bounce, Hellpod Steering Unlocked, Reinforcement Beacons Fixed, Consistent Vaulting, Shallow Water Diving and Sentry Aim Retention mods.** Install with **Arsenal or HD2MM**: import `Bingus-Shared-Loader-v18.zip`, enable it alongside the megapack or your chosen mods, then click **Deploy**. One loader installation supports all your selected mods.
 >

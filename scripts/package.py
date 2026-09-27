@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+import re
 import zipfile
 
 
@@ -24,7 +25,15 @@ def package_release(root: Path, build: Path, report: dict) -> Path:
         files[destination] = data
     slug = report['slug']
     # Public names share one format; provenance keeps the internal build revision.
-    release_version = 'v' + str(report.get('version') or report['revision']).rsplit('v', 1)[-1]
+    raw_version = str(report.get('version') or report['revision'])
+    if raw_version.startswith('v') and raw_version[1:2].isdigit():
+        release_version = raw_version
+    elif '-v' in raw_version:
+        release_version = 'v' + raw_version.rsplit('-v', 1)[-1]
+    else:
+        release_version = 'v' + raw_version
+    if not re.fullmatch(r'v\d+(?:[-.][A-Za-z0-9]+)*', release_version):
+        raise ValueError('Invalid release version: ' + raw_version)
     display_name = report['name'] + ' - ' + release_version
     release_stem = report['name'].replace(' ', '-') + '-' + release_version
     files[slug + '-README.txt'] = (root / 'INSTALL.txt').read_bytes()

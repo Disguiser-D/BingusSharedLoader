@@ -87,6 +87,51 @@ Manager resource-conflict handling is unchanged. Discovery does not detect
 gameplay incompatibilities, authenticate authors or sandbox addon code. Test
 your callbacks alongside other mods and document known incompatibilities.
 
+## Experimental gameplay coordination on `dev`
+
+The fork's `dev` branch adds `CowboyBingusModLoader.gameplay` without changing
+`CowboyBingusModLoader.api == 1`. This is a broker for capabilities supplied by
+other addons, not an implementation of Helldivers 2's native entity creation,
+throwable activation, heavy-target classification, or stratagem registration.
+An addon must treat a missing capability as unavailable; `World.spawn_unit`
+does not activate native G-50 seeker behavior in the tested game build.
+
+Register a backend only after you have validated its actual game behavior:
+
+```lua
+local gameplay = CowboyBingusModLoader.gameplay
+local ok, reason = gameplay.register('game.entity.spawn_throwable', 1,
+    {spawn = native_spawn_throwable}, 'mods/example/native_bridge')
+assert(ok, reason)
+```
+
+Consumers can wait for an optional backend without depending on addon load
+order. The callback runs once and is isolated from other listeners:
+
+```lua
+gameplay.when_available('game.entity.spawn_throwable', 1,
+    'mods/example/seeker_drone', function(provider)
+        -- Check the backend's own readiness and ownership before calling it.
+        spawn_throwable = provider.spawn
+    end)
+```
+
+`gameplay.get(name, minimum_version)` returns the provider, version and owner,
+or `nil` with a reason (`not registered` or `version too old`). Registrations
+are first-writer-wins for the current game session. Invalid names and duplicate
+providers are rejected. The loader never invents a fallback provider.
+
+For a recurring addon update, `gameplay.subscribe_update(owner, callback)`
+returns an unsubscribe function. The loader installs its update wrapper only
+after the first subscription, runs subscribers before the prior callback, preserves all
+arguments and return values, and disables a subscriber if it throws. It does
+not provide a frame clock or host-authority decision; the addon must handle
+those itself. As with any Lua callback wrapper, a later mod that replaces
+`update` without forwarding it can suppress subscribers.
+
+The new code has offline tests. It has not yet been deployed to a live game;
+do not mark a build with this change as runtime verified until tested.
+
 ## Shared LuaJIT code cache
 
 Every addon runs in the game's single LuaJIT 2.1.0-alpha VM, so they all share
