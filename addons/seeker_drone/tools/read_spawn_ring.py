@@ -110,6 +110,7 @@ def main():
     for read, base in process_reader():
         seen = set()
         start = time.monotonic()
+        ready = False
         while True:
             manager = struct.unpack('<Q', read(base + MANAGER_POINTER_RVA, 8))[0]
             if manager:
@@ -117,6 +118,10 @@ def main():
                 if next_slot >= RING_SLOTS:
                     raise RuntimeError('entity ring index out of range')
                 ring = read(manager + RING_DATA_OFFSET, RING_SLOTS * RECORD_SIZE)
+                if not ready:
+                    print(json.dumps({'event': 'ready', 'next_slot': next_slot}),
+                          flush=True)
+                    ready = True
                 for slot, kind, instance_id, variant, request_tag, flags in records(ring):
                     key = (slot, kind, instance_id)
                     if key not in seen:
@@ -132,6 +137,8 @@ def main():
             if time.monotonic() - start >= args.seconds:
                 break
             time.sleep(args.interval)
+        print(json.dumps({'event': 'complete', 'ready': ready,
+                          'records_seen': len(seen)}), flush=True)
 
 
 if __name__ == '__main__':

@@ -140,8 +140,14 @@ Behavior `0x549020`/`0x549110`, and Motion `0x5506D0`/`0x550910`.
 Their later stages read far into the `+0x48` initialization area: Throwable
 reads at least `+0x418`, Behavior reads `+0x66C..+0x680`, and Motion reads
 `+0x6A0/+0x6A8`. A minimal transform-only request cannot reproduce this
-component setup. Callback traversal does **not** prove automatic seeker
-launch. The creation request, owner/network contract, and any throw-action
+component setup. The weapon-fire path writes a direction vector at
+`init+0x418/+0x420` and the source weapon instance ID at `init+0x428`.
+Throwable's later-stage path (`0x544CA0` → `0x6C3370` → `0x6C5BC0`)
+consumes those fields, calculates motion, submits vectors to an engine physics
+backend, and publishes event hash `0x94FD1FEB`. The backend methods have not
+been named or verified as seeker activation. This is stronger than merely
+registering a component, but still does **not** prove autonomous flight or
+targeting. The creation request, owner/network contract, and any throw-action
 transition remain unverified. Calling `0xFDC140` directly from LuaJIT FFI
 would therefore be unsafe and would not yet prove G-50 or G-60 activation.
 
