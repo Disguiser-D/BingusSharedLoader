@@ -26,6 +26,18 @@ DLL is packed; these findings come from read-only live memory and are valid
 only for the checked game build. They do not capture a normal throw's call
 stack or identify a native seeker constructor.
 
+A later menu-only probe used [LuaJIT `jit.util.funcinfo`](https://github.com/LuaJIT/LuaJIT/blob/v2.1/src/lib_jit.c) to obtain the actual
+`stingray.World.spawn_unit` C-function address without invoking it. On the
+checked build it was in `helldivers2.exe` at RVA `0x3EACF0`, a small thunk to
+RVA `0x3EAA90`. Read-only code extraction followed its call chain through
+RVA `0x1A7E50` and `0x1A7FC0` to the engine's unit allocation path at RVA
+`0x1A3930`. The chain parses the Lua world and resource arguments and returns
+a Unit handle. This is a **verified engine Unit path**, not a Helldivers 2
+throwable gameplay constructor: the earlier one-shot test through this Lua
+function created an inert G-50 model. No normal player's throw was traced to
+any of these functions. The development probe is
+`addons/seeker_drone/funcinfo_probe.lua`; it only records function addresses.
+
 The next useful experiment requires a concrete native boundary: capture one
 normal player's G-50 throw, filtered by resource hash
 `0x2d398d1ec35e0838`, and identify the game-side caller that creates the
