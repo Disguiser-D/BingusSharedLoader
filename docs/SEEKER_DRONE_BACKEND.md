@@ -77,7 +77,9 @@ defines `Unit.scene_graph_parent` as the parent **node inside that same Unit**;
 it is not a backpack-to-player or drone-to-backpack ownership query.
 The [World API](https://help.autodesk.com/cloudhelp/2021/PTB/Max-Interactive-Help/lua_ref/obj_stingray_World.html)
 documents cross-Unit linking but no read-only reverse-parent function in the
-checked public reference. The game's local-player binding, dock transition,
+checked public reference. The earlier in-game Lua API inventory did list
+`Unit.is_child`, but its signature and whether it reports cross-Unit ownership
+have not been verified. The game's local-player binding, dock transition,
 and supply event still need their own verified signals. The original MG weapon
 also must be suppressed or replaced before a fallback could behave like a
 seeker-only drone; that has not been implemented.
