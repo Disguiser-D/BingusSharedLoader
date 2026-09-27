@@ -38,6 +38,17 @@ function created an inert G-50 model. No normal player's throw was traced to
 any of these functions. The development probe is
 `addons/seeker_drone/funcinfo_probe.lua`; it only records function addresses.
 
+An offline resource-override check found no direct substitute for the failed
+runtime weapon-table edit.
+[Filediver v0.7.55](https://github.com/xypwn/filediver/releases/tag/v0.7.55)
+listed no `dl_bin` resources in
+the installed game archives, and no file matching `*generated_entities*`.
+The loader's current archive writer emits Lua resources only. These results do
+not prove that all compiled gameplay data are unmodifiable, but they provide
+no verified archive target for replacing the `ProjectileWeaponComponentData`
+table at load time. Do not publish a guessed `dl_bin` override as a seeker
+spawn backend.
+
 The next useful experiment requires a concrete native boundary: capture one
 normal player's G-50 throw, filtered by resource hash
 `0x2d398d1ec35e0838`, and identify the game-side caller that creates the
