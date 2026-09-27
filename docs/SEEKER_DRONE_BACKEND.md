@@ -11,6 +11,13 @@ The loader's capability broker can coordinate a backend, but no provider yet
 creates a native active seeker. The current design lets G-60 use its own
 post-spawn targeting logic; it no longer requires a pre-spawn heavy-target
 boolean.
+The primary implementation path is an independent stratagem, backpack and
+drone controller. Reusing the machine-gun Guard Dog is only a fallback. Its
+firing configuration is not a prerequisite for the independent design, so
+further Guard Dog firing probes should stop unless they answer a specific
+shared native-spawn question. Both routes still need a verified way to create
+and activate the original G-50/G-60 gameplay entities; the independent route
+also needs stratagem/loadout registration and its own backpack integration.
 Further Lua API enumeration or scans for byte-identical raw component records
 do not address the missing native spawn operation.
 
