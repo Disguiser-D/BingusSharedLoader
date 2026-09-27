@@ -4,6 +4,37 @@ This note records what the new gameplay coordination API can and cannot do
 for a proposed G-50/G-60 drone. It is a development note, not an installable
 drone mod.
 
+## Decision gate
+
+The complete drone is **no-go with the currently verified interfaces**.
+The loader's capability broker can coordinate a backend, but no provider yet
+creates a native active seeker or returns a game-side heavy-target boolean.
+Further Lua API enumeration or scans for byte-identical raw component records
+do not address either missing operation.
+
+The next **read-only gate** is narrower than a throw test. The supported
+`game.dll` live `setup_game` callback at RVA `0x4EE160` calls a helper at
+RVA `0x4EDA90` while still passing the SDK's `get_engine_api` argument.
+Inspect that helper in a live, version-matched process for a request for
+`C_API_ID = 31`, then verify any returned `ScriptApi` pointer and its
+`WorldCApi.spawn_unit` slot. The on-disk DLL is packed, so static bytes at
+these RVAs are not usable for this check. If the API table cannot be
+resolved, no native throw trace should be proposed from a guessed address.
+Even if resolved, reading the pointer does not capture transient calls or
+registers; observing a real G-50 throw still needs a separately validated
+call-stack capture method.
+
+The next useful experiment requires a concrete native boundary: capture one
+normal player's G-50 throw, filtered by resource hash
+`0x2d398d1ec35e0838`, and identify the game-side caller that creates the
+gameplay entity, initializes its components, and sets ownership. A versioned
+function address alone is insufficient without a verified calling convention,
+object/parameter sources, and thread or network constraints. Separately,
+the G-60 gate needs a native boolean result tied to an actual target, shown
+to return `true` for a heavy target and not `true` for a non-heavy target.
+An armor number, size enum, or a hand-written threshold is not a substitute
+for the user's required explicit game-side result.
+
 On the supported Helldivers 2 build, a read-only Lua addon observed both
 `content/fac_helldivers/equipment/throwables/self_destruct_drone/self_destruct_drone`
 and `content/fac_helldivers/equipment/throwables/at_self_destruct_drone/at_self_destruct_drone`
