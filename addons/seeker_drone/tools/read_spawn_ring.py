@@ -94,7 +94,7 @@ def records(buffer):
         resource, instance_id, word_0c, word_10, flag_14 = struct.unpack_from(
             '<QIIII', buffer, slot * RECORD_SIZE)
         kind = SEEKERS.get(resource)
-        if kind and instance_id:
+        if kind:
             yield (slot, kind, instance_id, word_0c, word_10, flag_14)
 
 
@@ -108,7 +108,8 @@ def main():
     if not 0 <= args.seconds <= 300 or not 0.1 <= args.interval <= 5:
         parser.error('duration or interval out of range')
     for read, base in process_reader():
-        seen = set()
+        previous = {}
+        changes = 0
         start = time.monotonic()
         ready = False
         while True:
@@ -118,27 +119,37 @@ def main():
                 if next_slot >= RING_SLOTS:
                     raise RuntimeError('entity ring index out of range')
                 ring = read(manager + RING_DATA_OFFSET, RING_SLOTS * RECORD_SIZE)
-                if not ready:
+                initial = not ready
+                if initial:
                     print(json.dumps({'event': 'ready', 'next_slot': next_slot}),
                           flush=True)
                     ready = True
+                current = {}
                 for slot, kind, instance_id, word_0c, word_10, flag_14 in records(ring):
-                    key = (slot, kind, instance_id)
-                    if key not in seen:
-                        seen.add(key)
+                    signature = (kind, instance_id, word_10, flag_14)
+                    current[slot] = signature
+                    if previous.get(slot) != signature:
+                        changes += 1
                         print(json.dumps({
+                            'event': 'record_change',
                             'elapsed': round(time.monotonic() - start, 2),
                             'kind': kind, 'slot': slot,
                             'instance_id': instance_id,
                             'word_0c': word_0c, 'word_10': word_10,
                             'flag_14': flag_14,
-                            'initial': time.monotonic() - start < args.interval,
+                            'initial': initial,
                         }), flush=True)
+                for slot in previous.keys() - current.keys():
+                    changes += 1
+                    print(json.dumps({'event': 'slot_lost', 'slot': slot,
+                                      'elapsed': round(time.monotonic() - start, 2)}),
+                          flush=True)
+                previous = current
             if time.monotonic() - start >= args.seconds:
                 break
             time.sleep(args.interval)
         print(json.dumps({'event': 'complete', 'ready': ready,
-                          'records_seen': len(seen)}), flush=True)
+                          'record_changes': changes}), flush=True)
 
 
 if __name__ == '__main__':

@@ -163,12 +163,26 @@ request or prove that the instance flies.
 In a first read-only mission sample, the pre-throw ring's next slot was `471`
 and it contained no G-50 record. After the requested ordinary G-50 throw, a
 new G-50 record appeared in slot `471` with instance ID `532` at observer
-elapsed time 19.03 seconds. A later G-50 record appeared in slot `472` with
-ID `533`; the number of player throws in that interval is not yet established,
-so this second record is not attributed to a specific action. The
-observer also saw a zero-ID intermediate entry and now ignores such entries.
-These observations support creation at throw time for the first instance,
-but do not identify the throw-action call stack or prove how its seeker AI
+elapsed time 19.03 seconds. The player confirmed **exactly one throw** and
+observed that this seeker ran out of battery and landed about 30 seconds
+later. At observer time 52.66 seconds, slot `471` had changed to a G-50
+record with ID `0`, while slot `472` contained another G-50 record with ID
+`533`. The `+0x10` field was `0x7FFF` in the zero-ID record, versus `402` and
+`403` in the two nonzero-ID records. These fields have not been named or
+proven to represent ownership, lifetime, or flight state. Offline analysis
+then identified the native cleanup path at `0xFDC820`: after removing an
+instance's components and ID mapping, it writes zero to record `+0x0C`,
+`0x7FFF` to `+0x10`, the global invalid ID (zero in this build) to `+8`, and
+zero to `+0x14`, while deliberately leaving the resource hash at `+0`.
+Thus slot `471` is a **tombstone for deregistered ID 532**, not a second live
+G-50. Slot `472` is a separate newly registered instance; the available data
+do not prove that it is a direct replacement or inherits the first seeker's
+ownership and flight state. The timing matches the player's observed battery
+expiry, but it needs validation for impact paths and G-60 before this record
+can drive the drone's airborne-slot accounting. The diagnostic reports zero-ID
+and slot transitions rather than discarding them. The first observation
+supports creation around the throw,
+but it does not identify the throw-action call stack or prove how seeker AI
 starts. The game was then closed; no code hook, game file edit, or remote
 diagnostic file was installed.
 
