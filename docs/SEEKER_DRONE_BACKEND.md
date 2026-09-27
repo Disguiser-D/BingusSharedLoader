@@ -8,9 +8,11 @@ drone mod.
 
 The complete drone is **no-go with the currently verified interfaces**.
 The loader's capability broker can coordinate a backend, but no provider yet
-creates a native active seeker or returns a game-side heavy-target boolean.
+creates a native active seeker. The current design lets G-60 use its own
+post-spawn targeting logic; it no longer requires a pre-spawn heavy-target
+boolean.
 Further Lua API enumeration or scans for byte-identical raw component records
-do not address either missing operation.
+do not address the missing native spawn operation.
 
 The proposed **read-only API-table gate** has been completed. In the supported
 live build, `game.dll` `setup_game` (RVA `0x4EE160`) calls a helper at RVA
@@ -119,20 +121,18 @@ The complete image also allowed a focused heavy-target search. References to
 function accepting a target. The `TargetingComponent` name leads to component
 storage growth/copy code; `BugArmored` is among spawn-configuration labels.
 No checked candidate both accepts an actual target and returns a heavy-target
-boolean. This does not establish that such logic is absent, but G-60 must
-remain disabled until that exact gate is demonstrated. Unit-size enums and
-armor-penetration fields do not satisfy the required boolean result.
+boolean. This historical search is no longer a release blocker: the user
+subsequently removed the pre-spawn heavy gate and chose to rely on G-60's own
+targeting after a proper native spawn.
 
 The next useful experiment requires a concrete native boundary: capture one
 normal player's G-50 throw, filtered by resource hash
 `0x2d398d1ec35e0838`, and identify the game-side caller that creates the
 gameplay entity, initializes its components, and sets ownership. A versioned
 function address alone is insufficient without a verified calling convention,
-object/parameter sources, and thread or network constraints. Separately,
-the G-60 gate needs a native boolean result tied to an actual target, shown
-to return `true` for a heavy target and not `true` for a non-heavy target.
-An armor number, size enum, or a hand-written threshold is not a substitute
-for the user's required explicit game-side result.
+object/parameter sources, and thread or network constraints. The same
+creation/activation path then needs validation for G-60; no separate
+pre-spawn target-classification interface is required.
 
 On the supported Helldivers 2 build, a read-only Lua addon observed both
 `content/fac_helldivers/equipment/throwables/self_destruct_drone/self_destruct_drone`
@@ -157,9 +157,9 @@ for G-60 or every impact path.
 
 The requested design requires independent magazine and backpack reserves
 (G-50: 200/1000, G-60: 100/500), airborne limits (2/1), docking refill,
-supply refill, and generation of G-60 only after a target exists and the
-game's heavy-target check explicitly returns `true`. Its native seeker logic
-should take over after a proper game-entity spawn. An independent stratagem is
+supply refill, and generation of either type whenever its air slot is vacant
+and ammunition remains. Each grenade's native seeker logic should take over
+after a proper game-entity spawn. An independent stratagem is
 preferred; replacing the machine-gun Guard Dog stratagem is a fallback.
 
 The loader's `gameplay` API coordinates independently supplied providers. It
@@ -168,11 +168,9 @@ can register a working backend, the following must be found and validated:
 
 1. A game-entity throwable creation/activation call that starts native seeker
    behavior, associates the owner, and behaves correctly in multiplayer.
-2. A game-side target query and heavy classification that can explicitly
-   return `true` before G-60 creation.
-3. An active-flight or terminal event for each seeker instance, plus local
+2. An active-flight or terminal event for each seeker instance, plus local
    player ownership and drone/backpack/supply events.
-4. A supported way to register a new stratagem and its backpack/loadout data;
+3. A supported way to register a new stratagem and its backpack/loadout data;
    otherwise validate the authorized Guard Dog replacement route.
 
 Do not register `World.spawn_unit` as a provider named

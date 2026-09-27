@@ -90,21 +90,14 @@ function Inventory:reconcile(still_airborne)
 end
 
 -- The game adapter supplies spawn(kind), returning the spawned entity's stable
--- ID or nil. G-60 is generated only if a target exists and is_heavy(target)
--- explicitly returns true. Native seeker behavior takes over after spawning.
-function Inventory:maintain(spawn, find_target, is_heavy)
+-- ID or nil. Both types fill vacant slots; native seeker behavior chooses
+-- targets after a proper game-entity spawn.
+function Inventory:maintain(spawn)
     assert(type(spawn) == 'function', 'spawn callback required')
     if self.docked or self:needs_dock() then return {g50 = 0, g60 = 0} end
     local launched = {g50 = 0, g60 = 0}
     for _, kind in ipairs({'g50', 'g60'}) do
         while self:can_launch(kind) do
-            if kind == 'g60' then
-                if type(find_target) ~= 'function' or type(is_heavy) ~= 'function' then break end
-                local found, target = pcall(find_target)
-                if not found or target == nil or target == false then break end
-                local classified, heavy = pcall(is_heavy, target)
-                if not classified or heavy ~= true then break end
-            end
             local token = self:begin_launch(kind)
             local ok, entity_id = pcall(spawn, kind)
             if not ok or entity_id == nil or not self:finish_launch(token, entity_id) then
