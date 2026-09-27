@@ -73,3 +73,10 @@ was firing. It restored every field after at most one second and verified the
 original table hashes again. The loaded read-only G-50 observer saw no new
 G-50 units. This raw-table replacement has therefore not established a usable
 spawn backend. No G-60 was generated.
+
+A process-wide read-only search for the Guard Dog weapon record's unique
+32-byte prefix found only original DL-table copies: five at the main menu and
+four while the equipped Guard Dog fired in a mission. It scanned about 4.3 GB
+and 5.8 GB of private writable memory respectively. No separate byte-identical
+runtime component was found. The game may use a transformed component layout,
+so this does not identify the native creation function.
