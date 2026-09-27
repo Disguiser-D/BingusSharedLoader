@@ -22,6 +22,10 @@ class RuntimeLookupTest(unittest.TestCase):
                  struct.pack('<QIIII', ring.GUARD_DOG_WEAPON, self.instance_id,
                              0, 1, 1))
         self.put(self.manager + 0xF12E80, struct.pack('<Q', self.table))
+        bucket = ring.GUARD_DOG_WEAPON % ring.RAW_WEAPON_MAP_SLOTS
+        self.put(self.table + bucket * 16,
+                 struct.pack('<QI', ring.GUARD_DOG_WEAPON,
+                             ring.GUARD_DOG_RECORD_INDEX))
         self.put(self.table + 0x21E0 + ring.GUARD_DOG_RECORD_INDEX * 616,
                  bytes(616))
         self.put(self.base + ring.INVALID_INSTANCE_RVA, struct.pack('<I', 0))

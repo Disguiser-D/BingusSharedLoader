@@ -210,6 +210,20 @@ but a read-only sample cannot establish every firing frame or prove that
 changing the raw record would create an active seeker. No remote file or
 memory write was used for this lookup.
 
+Offline control-flow review narrowed the unresolved cause. The firing path
+calls `0x515100` at `0x612A13`, stores the returned record **pointer** at
+`[rsp+0x68]`, and checks that pointer's `ProjectileEntity` at `0x6143CD`.
+It does not copy the 616-byte record between those instructions. Thus a
+hidden third copy is not needed to explain the failed patch. The earlier
+temporary patch script searched regions selected from a fixed list of
+unrelated globals for exact whole-table hashes; it never checked whether the
+active table pointer at entity manager `+0xF12E80` belonged to its patched
+set. The old result therefore does not prove that the firing branch saw the
+candidate field. The diagnostic now reproduces the native raw index lookup
+and reports the active table, record, and field addresses when the weapon
+instance is present. A later snapshot found only the old weapon tombstone,
+so that address check still needs a fresh active instance.
+
 The bundled Filediver bulk projectile-weapon parser is unsuitable for this
 field comparison: its Go struct reads 388 bytes per record while the current
 DL type and native lookup use 616. A separate full-entity parse of original

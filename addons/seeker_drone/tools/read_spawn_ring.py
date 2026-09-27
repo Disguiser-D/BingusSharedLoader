@@ -30,6 +30,7 @@ RUNTIME_WEAPON_STORE_RVA = 0x33266D8
 INVALID_INSTANCE_RVA = 0x3483C24
 WEAPON_RECORD_SIZE = 616
 GUARD_DOG_RECORD_INDEX = 188
+RAW_WEAPON_MAP_SLOTS = 542
 
 
 def game_pid():
@@ -43,7 +44,7 @@ def game_pid():
     return int(ids[0])
 
 
-def process_reader():
+def process_reader(pid=None):
     kernel = C.WinDLL('kernel32', use_last_error=True)
     psapi = C.WinDLL('psapi', use_last_error=True)
     kernel.OpenProcess.argtypes = (C.c_uint32, C.c_int, C.c_uint32)
@@ -57,7 +58,7 @@ def process_reader():
         C.POINTER(C.c_uint32), C.c_uint32)
     psapi.GetModuleBaseNameW.argtypes = (
         C.c_void_p, C.c_void_p, C.c_wchar_p, C.c_uint32)
-    handle = kernel.OpenProcess(0x0410, 0, game_pid())
+    handle = kernel.OpenProcess(0x0410, 0, pid or game_pid())
     if not handle:
         raise RuntimeError(f'OpenProcess failed: {C.get_last_error()}')
 
@@ -115,12 +116,26 @@ def guard_dog_runtime(read, base, entity_manager, slot, instance_id):
     table = struct.unpack('<Q', read(entity_manager + 0xF12E80, 8))[0]
     if not table:
         raise RuntimeError('projectile weapon table unavailable')
-    raw_record = read(table + 0x21E0 + GUARD_DOG_RECORD_INDEX * WEAPON_RECORD_SIZE,
-                      WEAPON_RECORD_SIZE)
+    for probe in range(RAW_WEAPON_MAP_SLOTS):
+        bucket = (GUARD_DOG_WEAPON % RAW_WEAPON_MAP_SLOTS + probe) % RAW_WEAPON_MAP_SLOTS
+        raw_key, raw_index = struct.unpack('<QI', read(table + bucket * 16, 12))
+        if raw_key == GUARD_DOG_WEAPON:
+            if raw_index != GUARD_DOG_RECORD_INDEX:
+                raise RuntimeError('Guard Dog weapon raw index changed')
+            break
+        if raw_key == 0:
+            raise RuntimeError('Guard Dog weapon absent from raw index')
+    else:
+        raise RuntimeError('Guard Dog weapon raw index full without match')
+    raw_record_address = table + 0x21E0 + raw_index * WEAPON_RECORD_SIZE
+    raw_record = read(raw_record_address, WEAPON_RECORD_SIZE)
     raw_projectile = struct.unpack_from('<Q', raw_record, 0x28)[0]
     invalid_id = struct.unpack('<I', read(base + INVALID_INSTANCE_RVA, 4))[0]
     report = {'event': 'guard_dog_runtime', 'instance_id': instance_id,
               'raw_projectile_entity': f'{raw_projectile:#018x}',
+              'raw_table_address': f'{table:#018x}',
+              'raw_record_address': f'{raw_record_address:#018x}',
+              'raw_field_address': f'{raw_record_address + 0x28:#018x}',
               'override': False}
     store = struct.unpack('<Q', read(base + RUNTIME_WEAPON_STORE_RVA, 8))[0]
     validation = []
@@ -162,6 +177,8 @@ def guard_dog_runtime(read, base, entity_manager, slot, instance_id):
             raise RuntimeError('runtime weapon store changed during lookup')
     if (read(entity_address, RECORD_SIZE) != entity_before
             or read(entity_manager + 0xF12E80, 8) != struct.pack('<Q', table)
+            or read(table + bucket * 16, 12) != struct.pack('<QI', raw_key, raw_index)
+            or read(raw_record_address, WEAPON_RECORD_SIZE) != raw_record
             or read(base + RUNTIME_WEAPON_STORE_RVA, 8) != struct.pack('<Q', store)
             or any(read(address, len(value)) != value
                    for address, value in validation)):
@@ -177,10 +194,14 @@ def main():
                         help='poll interval in seconds')
     parser.add_argument('--guard-dog-runtime', action='store_true',
                         help='also inspect active Guard Dog weapon overrides')
+    parser.add_argument('--pid', type=int,
+                        help='specific game process ID when more than one exists')
     args = parser.parse_args()
     if not 0 <= args.seconds <= 300 or not 0.1 <= args.interval <= 5:
         parser.error('duration or interval out of range')
-    for read, base in process_reader():
+    if args.pid is not None and args.pid <= 0:
+        parser.error('PID must be positive')
+    for read, base in process_reader(args.pid):
         previous = {}
         changes = 0
         start = time.monotonic()
