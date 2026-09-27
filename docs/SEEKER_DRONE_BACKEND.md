@@ -48,14 +48,28 @@ The file is 46,612,636 bytes and its current SHA-256 is
 `7DF1A07E90C61E0B8398ECBC5C088074655900943BF1CD7E09F69BCCEDEC4A2A`.
 Its bytes are high-entropy and have no plaintext `DLDL` header. Filediver's
 embedded decoded snapshot is 46,612,588 bytes with a `DLDL` header; the
-verified current-build projectile-weapon subtable matches that snapshot, but
-this does not establish that the entire decoded file is identical. The extra
-48 bytes and differing encoding mean a modified plaintext snapshot cannot
-simply be substituted for the installed file. The loader's archive writer
-emits Lua resources only. No verified load-time encoding or safe overlay path
-exists yet; the installed file has not been edited.
+verified current-build projectile-weapon subtable matches that snapshot.
+The game's own data loader hashes the **decoded full file** with MurmurHash64A
+seed `0xDEADBEEFABAD1DEA`; its expected result is
+`0xEBFD607F348CFC7F`. The Filediver decoded snapshot produces exactly that
+result, establishing whole-file compatibility with the current game's
+expected content hash. This is not a byte-for-byte SHA-256 comparison with
+the encrypted installed file. The extra 48 bytes and differing encoding mean
+a modified plaintext snapshot cannot simply be substituted for the installed
+file. The loader's archive writer emits Lua resources only. No verified
+load-time encoding or safe overlay path exists yet; the installed file has not
+been edited.
 The live image used for this offline analysis was 74,727,424 bytes, with no
 unreadable pages, and was kept only in ignored local development artifacts.
+
+The loader at RVA `0xFDB440` calls its resource-read callback, verifies the
+decoded buffer at RVA `0x1269820`, then parses its DL structure. A mismatch
+enters an error-report callback before parsing continues. The callback's
+effect has not been verified, so bypassing or ignoring the integrity result
+would be an unsupported gameplay change. The offline
+`tools/plan_projectile_entity.py --decoded-full` mode checks the original
+full-file SHA-256 and game-side content hash, then reports the exact G-50
+candidate field offset and resulting hashes without writing modified data.
 
 The complete image also allowed a focused heavy-target search. References to
 `tag_spot_enemy_gen_character_heavy` and
