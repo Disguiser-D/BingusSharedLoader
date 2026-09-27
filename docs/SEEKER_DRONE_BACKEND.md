@@ -160,6 +160,18 @@ can establish whether a new entity is created on release or whether the game
 acts on an already held entity. This ring does not retain the full creation
 request or prove that the instance flies.
 
+In a first read-only mission sample, the pre-throw ring's next slot was `471`
+and it contained no G-50 record. After the requested ordinary G-50 throw, a
+new G-50 record appeared in slot `471` with instance ID `532` at observer
+elapsed time 19.03 seconds. A later G-50 record appeared in slot `472` with
+ID `533`; the number of player throws in that interval is not yet established,
+so this second record is not attributed to a specific action. The
+observer also saw a zero-ID intermediate entry and now ignores such entries.
+These observations support creation at throw time for the first instance,
+but do not identify the throw-action call stack or prove how its seeker AI
+starts. The game was then closed; no code hook, game file edit, or remote
+diagnostic file was installed.
+
 The bundled Filediver bulk projectile-weapon parser is unsuitable for this
 field comparison: its Go struct reads 388 bytes per record while the current
 DL type and native lookup use 616. A separate full-entity parse of original

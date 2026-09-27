@@ -91,11 +91,11 @@ def process_reader():
 
 def records(buffer):
     for slot in range(RING_SLOTS):
-        resource, instance_id, variant, request_tag, flags = struct.unpack_from(
+        resource, instance_id, word_0c, word_10, flag_14 = struct.unpack_from(
             '<QIIII', buffer, slot * RECORD_SIZE)
         kind = SEEKERS.get(resource)
-        if kind:
-            yield (slot, kind, instance_id, variant, request_tag, flags)
+        if kind and instance_id:
+            yield (slot, kind, instance_id, word_0c, word_10, flag_14)
 
 
 def main():
@@ -122,7 +122,7 @@ def main():
                     print(json.dumps({'event': 'ready', 'next_slot': next_slot}),
                           flush=True)
                     ready = True
-                for slot, kind, instance_id, variant, request_tag, flags in records(ring):
+                for slot, kind, instance_id, word_0c, word_10, flag_14 in records(ring):
                     key = (slot, kind, instance_id)
                     if key not in seen:
                         seen.add(key)
@@ -130,8 +130,8 @@ def main():
                             'elapsed': round(time.monotonic() - start, 2),
                             'kind': kind, 'slot': slot,
                             'instance_id': instance_id,
-                            'variant': variant, 'request_tag': request_tag,
-                            'flags': flags,
+                            'word_0c': word_0c, 'word_10': word_10,
+                            'flag_14': flag_14,
                             'initial': time.monotonic() - start < args.interval,
                         }), flush=True)
             if time.monotonic() - start >= args.seconds:
