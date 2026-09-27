@@ -198,12 +198,17 @@ path copies raw configuration and applies entity deltas when building a
 runtime record. This creates a plausible explanation for why temporarily
 changing every byte-identical raw Guard Dog record during firing did not
 produce G-50: an active weapon override could have taken precedence. It is
-**not yet established** that the machine-gun Guard Dog weapon has such an
-override in a mission. The optional `--guard-dog-runtime` mode in the
-read-only ring diagnostic is prepared to check that exact weapon instance,
-with before/after consistency checks; it has not yet produced a live result.
-The lookup does not itself prove that changing either record would create an
-active seeker.
+**not established** as the reason for that earlier result. The optional
+`--guard-dog-runtime` mode in the read-only ring diagnostic checked an active
+machine-gun Guard Dog weapon in a mission while the user observed it firing:
+ring slot `488`, instance ID `549`, raw `ProjectileEntity=0`, runtime
+`override=false`. The checked versioned lookup therefore fell back to the raw
+table for this weapon instance. This rejects the specific hypothesis that a
+runtime override masked the earlier raw-table patch. It does not explain why
+that patch yielded no G-50. The diagnostic checks before/after consistency,
+but a read-only sample cannot establish every firing frame or prove that
+changing the raw record would create an active seeker. No remote file or
+memory write was used for this lookup.
 
 The bundled Filediver bulk projectile-weapon parser is unsuitable for this
 field comparison: its Go struct reads 388 bytes per record while the current
