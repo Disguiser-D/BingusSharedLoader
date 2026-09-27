@@ -12,17 +12,19 @@ creates a native active seeker or returns a game-side heavy-target boolean.
 Further Lua API enumeration or scans for byte-identical raw component records
 do not address either missing operation.
 
-The next **read-only gate** is narrower than a throw test. The supported
-`game.dll` live `setup_game` callback at RVA `0x4EE160` calls a helper at
-RVA `0x4EDA90` while still passing the SDK's `get_engine_api` argument.
-Inspect that helper in a live, version-matched process for a request for
-`C_API_ID = 31`, then verify any returned `ScriptApi` pointer and its
-`WorldCApi.spawn_unit` slot. The on-disk DLL is packed, so static bytes at
-these RVAs are not usable for this check. If the API table cannot be
-resolved, no native throw trace should be proposed from a guessed address.
-Even if resolved, reading the pointer does not capture transient calls or
-registers; observing a real G-50 throw still needs a separately validated
-call-stack capture method.
+The proposed **read-only API-table gate** has been completed. In the supported
+live build, `game.dll` `setup_game` (RVA `0x4EE160`) calls a helper at RVA
+`0x4EDA90` with `get_engine_api`; the helper requests ID 31 and stores its
+return value at RVA `0x3326308`. This slot and two successive table pointers
+are readable, but the function at the SDK-predicted `WorldCApi.spawn_unit`
+slot has an incompatible calling pattern: it uses only the first two input
+registers, substitutes a constant resource ID, and forwards to an internal
+wrapper. The adjacent slots also do not establish the SDK `WorldCApi` layout.
+**Do not call or label this function as `spawn_unit`.** ID 31 in this game
+build cannot be interpreted from the public sample SDK alone. The on-disk
+DLL is packed; these findings come from read-only live memory and are valid
+only for the checked game build. They do not capture a normal throw's call
+stack or identify a native seeker constructor.
 
 The next useful experiment requires a concrete native boundary: capture one
 normal player's G-50 throw, filtered by resource hash
