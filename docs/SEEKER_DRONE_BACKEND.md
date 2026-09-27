@@ -65,4 +65,11 @@ A read-only in-process check found an exact SHA-256 match between the current
 game's complete 176,224-byte projectile-weapon component data and Filediver's
 embedded snapshot. This validates the table contents for this game build, but
 does not identify the active writable record or show that replacing the field
-would initialize the G-50 seeker. No such patch has been installed or tested.
+would initialize the G-50 seeker.
+
+A later controlled runtime experiment temporarily replaced that field with
+the G-50 resource hash in every exact-hash table copy found while the Guard Dog
+was firing. It restored every field after at most one second and verified the
+original table hashes again. The loaded read-only G-50 observer saw no new
+G-50 units. This raw-table replacement has therefore not established a usable
+spawn backend. No G-60 was generated.
