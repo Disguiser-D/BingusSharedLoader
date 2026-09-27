@@ -67,6 +67,10 @@ Re-encrypting the unchanged snapshot also passed an offline sealed-box
 round-trip. No game data or key material is included in this repository.
 The loader's archive writer emits Lua resources only; the installed data file
 has not been edited.
+The engine resource-read callback at RVA `0xA85F0` formats a
+`data/game/<filename>` path, converts it to UTF-16, and opens it with a
+read-binary mode string. This observed loose-file path gives no evidence that
+a Lua archive or Arsenal patch archive could override these DL files.
 The live image used for this offline analysis was 74,727,424 bytes, with no
 unreadable pages, and was kept only in ignored local development artifacts.
 
@@ -102,11 +106,53 @@ the entry's index. In the checked function, entry padding is not read and
 duplicate record indices are not rejected. The unchanged 271 resource keys
 resolve to their original record addresses under this **actual native lookup**;
 the candidate Guard Dog record resolves to a `ProjectileEntity` field containing
-the G-50 hash. One observed consumer at RVA `0x61AF10` copies the selected
-record into entity initialization. A scan found no other direct reference to
+the G-50 hash. RVA `0x61AF10` copies a selected 616-byte record while applying
+**entity deltas**; its caller traverses the separately loaded
+`generated_entity_deltas.dl_bin`. It is a configuration consumer, not an
+entity creation function. A scan found no other direct reference to
 the table pointer, but indirect or generic consumers have not been ruled out.
 This narrows the index risk without verifying candidate loading or seeker
 activation in-game.
+
+The actual weapon-fire branch provides a stronger creation lead. At RVA
+`0x6143CD`, the game tests whether the `ProjectileEntity` field is nonzero;
+that branch calls RVA `0x615940`. This routine reads the projectile entity
+hash from its weapon configuration and passes it as the third argument to
+RVA `0xFDC140` at `0x6164D4`. The latter stores a game entity record and calls
+the generic entity/component instantiation dispatchers at RVAs `0x581320`
+and `0x581780`. Its other arguments include a game-generated 32-bit entity ID
+and a writable creation request. Its ownership and network semantics have not
+been mapped. The known head has two flags at
+`+0/+1`, a 32-bit value at `+4` (the observed firing path writes `0x7FFF`),
+a 64-byte transform at `+8..+0x47`, and pointers at `+0x48` and `+0x50`.
+The first pointer refers to a large per-component initialization area built
+by the firing path; the second refers to another prepared auxiliary block.
+Neither pointer can safely be replaced with an empty/default value merely
+to call the function.
+The function does not return an entity handle; the ID is an input. A separate
+wrapper at RVA `0xFDC0C0` obtains that ID and then calls the same function.
+The G-50 and G-60 root entity definitions each contain 25 component IDs;
+this dispatch path traverses their registered component IDs, including
+Throwable (`259`) and Behavior (`284`). After correcting the callback-table
+base to be relative to the component manager, the checked first/later callback
+RVAs are Unit `0x523460`/`0x523650`, Throwable `0x544AF0`/`0x544CA0`,
+Behavior `0x549020`/`0x549110`, and Motion `0x5506D0`/`0x550910`.
+Their later stages read far into the `+0x48` initialization area: Throwable
+reads at least `+0x418`, Behavior reads `+0x66C..+0x680`, and Motion reads
+`+0x6A0/+0x6A8`. A minimal transform-only request cannot reproduce this
+component setup. Callback traversal does **not** prove automatic seeker
+launch. The creation request, owner/network contract, and any throw-action
+transition remain unverified. Calling `0xFDC140` directly from LuaJIT FFI
+would therefore be unsafe and would not yet prove G-50 or G-60 activation.
+
+A lower-impact live check can read the entity manager's existing 2,048-entry
+creation ring at `+0xF32F18`: each 24-byte record stores a resource hash and
+instance ID. The read-only diagnostic
+`addons/seeker_drone/tools/read_spawn_ring.py` reports new G-50/G-60 entries
+without installing a hook. Observing both equipment and the eventual throw
+can establish whether a new entity is created on release or whether the game
+acts on an already held entity. This ring does not retain the full creation
+request or prove that the instance flies.
 
 The bundled Filediver bulk projectile-weapon parser is unsuitable for this
 field comparison: its Go struct reads 388 bytes per record while the current
@@ -125,12 +171,12 @@ boolean. This historical search is no longer a release blocker: the user
 subsequently removed the pre-spawn heavy gate and chose to rely on G-60's own
 targeting after a proper native spawn.
 
-The next useful experiment requires a concrete native boundary: capture one
-normal player's G-50 throw, filtered by resource hash
-`0x2d398d1ec35e0838`, and identify the game-side caller that creates the
-gameplay entity, initializes its components, and sets ownership. A versioned
-function address alone is insufficient without a verified calling convention,
-object/parameter sources, and thread or network constraints. The same
+The next useful experiment must determine whether an ordinary G-50 throw
+creates an entity at `0xFDC140` or acts on a held entity created earlier,
+then identify the state transition that starts flight. The resource hash
+`0x2d398d1ec35e0838` and generated instance ID can constrain that trace.
+A versioned function address alone is insufficient without a verified request
+layout, owner/network contract, and thread constraints. The same
 creation/activation path then needs validation for G-60; no separate
 pre-spawn target-classification interface is required.
 
