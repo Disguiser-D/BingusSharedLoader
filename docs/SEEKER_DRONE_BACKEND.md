@@ -20,6 +20,10 @@ Unit existence also does not establish whether a seeker still occupies an
 airborne slot. Native G-50 instances remained `Unit.alive == true` after their
 positions stopped changing. A drone needs an authoritative active-flight or
 completion signal, not just resource counts or `Unit.alive`.
+Two native G-50 throws were observed transitioning through main animation
+states 0, 1, 3, then 4 (`undeploy`) after about 30 seconds. Both still existed
+after entering state 4; this is a candidate activity signal, not yet validated
+for G-60 or every impact path.
 
 The requested design requires independent magazine and backpack reserves
 (G-50: 200/1000, G-60: 100/500), airborne limits (2/1), docking refill,
@@ -49,6 +53,10 @@ Follow-up live checks also found `stingray.EntityManager.spawn`, but the
 equipped G-50's `Application.can_get('entity', ...)` returned `false`; the
 guarded probe therefore did not call that function. The available G-50 unit
 resource is not a spawnable `.entity` resource through this interface.
+`EntityManager.create` only creates a blank entity. In a later read-only test,
+`Network.game_session()` returned a session while native G-50 was present,
+but `GameSession.unit_synchronizer(session)` returned `nil`, so the generic
+`UnitSynchronizer` path did not expose this seeker either.
 
 The native `ProjectileWeaponComponentData` table offers a different lead:
 its `projectile_entity` field instructs a firing weapon to spawn an entity.
