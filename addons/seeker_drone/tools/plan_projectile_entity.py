@@ -1,9 +1,9 @@
 """Validate current-build decoded weapon data and report candidate patch bytes.
 
 This is an offline planner. It never writes to the input file or game process.
-The proposed G-50 field replacement has not been tested in-game. The game's
-installed generated_entities.dl_bin has a separate, unverified encoding; this
-tool accepts decoded data only and does not create an installable replacement.
+The proposed G-50 field replacement has not been tested in-game. The installed
+generated_entities.dl_bin is sealed-box encoded, while this tool accepts only
+decoded data and does not create an installable replacement.
 """
 
 import argparse

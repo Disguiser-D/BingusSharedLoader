@@ -46,30 +46,51 @@ the loaded `game.dll` corrected the scope of that result: its function at RVA
 installation has this as a loose file at `data/game/generated_entities.dl_bin`.
 The file is 46,612,636 bytes and its current SHA-256 is
 `7DF1A07E90C61E0B8398ECBC5C088074655900943BF1CD7E09F69BCCEDEC4A2A`.
-Its bytes are high-entropy and have no plaintext `DLDL` header. Filediver's
-embedded decoded snapshot is 46,612,588 bytes with a `DLDL` header; the
+Its bytes are high-entropy and have no plaintext DL magic `0x444C444C`.
+Filediver's embedded decoded snapshot is 46,612,588 bytes with that magic; the
 verified current-build projectile-weapon subtable matches that snapshot.
 The game's own data loader hashes the **decoded full file** with MurmurHash64A
 seed `0xDEADBEEFABAD1DEA`; its expected result is
 `0xEBFD607F348CFC7F`. The Filediver decoded snapshot produces exactly that
 result, establishing whole-file compatibility with the current game's
 expected content hash. This is not a byte-for-byte SHA-256 comparison with
-the encrypted installed file. The extra 48 bytes and differing encoding mean
-a modified plaintext snapshot cannot simply be substituted for the installed
-file. The loader's archive writer emits Lua resources only. No verified
-load-time encoding or safe overlay path exists yet; the installed file has not
-been edited.
+the encrypted installed file. The extra 48 bytes are now explained: the
+engine resource callback at RVA `0xA85F0` passes the installed file to a
+[libsodium sealed-box decoder](https://github.com/jedisct1/libsodium/blob/master/src/libsodium/crypto_box/crypto_box_seal.c)
+at RVA `0x91EE30`. Its format adds a 32-byte ephemeral public key and 16-byte
+authentication overhead. Offline verification decoded three installed
+files (entities, projectile settings, damage settings) and matched each
+decoded result byte-for-byte to the corresponding Filediver snapshot.
+Re-encrypting the unchanged snapshot also passed an offline sealed-box
+round-trip. No game data or key material is included in this repository.
+The loader's archive writer emits Lua resources only; the installed data file
+has not been edited.
 The live image used for this offline analysis was 74,727,424 bytes, with no
 unreadable pages, and was kept only in ignored local development artifacts.
 
 The loader at RVA `0xFDB440` calls its resource-read callback, verifies the
 decoded buffer at RVA `0x1269820`, then parses its DL structure. A mismatch
-enters an error-report callback before parsing continues. The callback's
-effect has not been verified, so bypassing or ignoring the integrity result
-would be an unsupported gameplay change. The offline
+calls an engine error handler at RVA `0x3187B0`, whose code invokes another
+handler and then executes `int3`. This is not a safe, ignorable warning path.
+The offline
 `tools/plan_projectile_entity.py --decoded-full` mode checks the original
 full-file SHA-256 and game-side content hash, then reports the exact G-50
 candidate field offset and resulting hashes without writing modified data.
+The one-field candidate changes the game content hash from
+`0xEBFD607F348CFC7F` to `0x0E28FCBD0A79611F`; authentic encryption alone
+would therefore not make it pass the game's integrity check. A separate
+**local-only** experiment changed an empty index slot as well and restored
+the expected whole-file hash. It preserved all 271 existing projectile-weapon
+index lookups in an offline model, then passed a sealed-box encrypt/decrypt
+round-trip. The change adds a new index alias pointing to an existing record;
+the loader may enumerate or reject that alias despite unchanged old lookups.
+This does not establish that the game's parser accepts the modified index,
+that its other integrity checks accept the file,
+or that firing the Guard Dog creates an active G-50. The candidate, original
+data, and encryption keys remain in ignored local development artifacts; no
+replacement was installed on the game computer. Testing a replacement would
+also carry game-integrity and account risk, so this is not a supported Mod
+distribution route.
 
 The complete image also allowed a focused heavy-target search. References to
 `tag_spot_enemy_gen_character_heavy` and
