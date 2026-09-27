@@ -18,8 +18,44 @@ further Guard Dog firing probes should stop unless they answer a specific
 shared native-spawn question. Both routes still need a verified way to create
 and activate the original G-50/G-60 gameplay entities; the independent route
 also needs stratagem/loadout registration and its own backpack integration.
+The current build's native stratagem directory is already full; see the
+registration gate below. Independent registration remains the desired outcome,
+but it is **not a simpler first playable milestone**. The authorized fallback
+is to reuse an existing selectable slot while keeping the seeker controller
+separate from the machine-gun firing behavior.
 Further Lua API enumeration or scans for byte-identical raw component records
 do not address the missing native spawn operation.
+
+## Independent stratagem registration gate
+
+A read-only inspection of this installation's
+`data/game/generated_stratagem_settings.dl_bin` found an 80,280-byte decoded
+file containing 11 DL blocks and 149 records of 400 bytes each. Record IDs
+`1..149` are all occupied with no duplicates; ID `0` has special handling and
+is not an available new slot. The machine-gun Guard Dog is ID `73`.
+The decoded SHA-256 is
+`6908f0cef38b7c4868a79a256dc5c846bc2c43cccacb7a4be5650df68339b808`.
+The decoded whole-file content hash `0x54AEE477F56D4A45` matches this build's
+game-side expected value. Appending or modifying a record changes that hash
+and must pass the game's full-file integrity path.
+
+In the checked `game.dll`, RVA `0x11F2080` loads this file. At
+`0x11F2216..0x11F2225` the loader reads each record's ID and stores a pointer
+in a global array at RVA `0x37CB600`. The array has 150 pointer slots
+(`0x4B0` bytes); later code hard-codes the `0x96` bound. Simply adding ID
+`150` or higher is therefore unsafe, while reusing an existing ID is a
+replacement, not a new independent stratagem. A routine at RVA `0x1368940`
+named `register_shared_stratagem` manages references to existing stratagems;
+its fixed 64-item state does not establish a new selectable loadout entry.
+Player unlock and menu selection rules are still unmapped, so even extending
+the pointer array would not by itself prove independent registration.
+
+The version-one fallback can reuse the existing Guard Dog stratagem's
+selection and delivery to host a separate seeker-drone controller. This does
+not require relying on its machine-gun firing to launch seekers, but it still
+requires a verified G-50/G-60 gameplay spawn and lifecycle interface.
+No replacement of this sealed settings file or memory patch is currently
+deployed.
 
 The proposed **read-only API-table gate** has been completed. In the supported
 live build, `game.dll` `setup_game` (RVA `0x4EE160`) calls a helper at RVA
