@@ -92,6 +92,27 @@ replacement was installed on the game computer. Testing a replacement would
 also carry game-integrity and account risk, so this is not a supported Mod
 distribution route.
 
+The native lookup for this exact component table was subsequently located at
+`game.dll` RVA `0x514C10`. It reads the table pointer at component manager
+offset `0xF12E80`, starts at `resource_hash % 542`, probes 16-byte entries
+until the key matches or is zero, then returns the 616-byte record selected by
+the entry's index. In the checked function, entry padding is not read and
+duplicate record indices are not rejected. The unchanged 271 resource keys
+resolve to their original record addresses under this **actual native lookup**;
+the candidate Guard Dog record resolves to a `ProjectileEntity` field containing
+the G-50 hash. One observed consumer at RVA `0x61AF10` copies the selected
+record into entity initialization. A scan found no other direct reference to
+the table pointer, but indirect or generic consumers have not been ruled out.
+This narrows the index risk without verifying candidate loading or seeker
+activation in-game.
+
+The bundled Filediver bulk projectile-weapon parser is unsuitable for this
+field comparison: its Go struct reads 388 bytes per record while the current
+DL type and native lookup use 616. A separate full-entity parse of original
+versus candidate decoded files accepted both; after controlling for the
+parser's baseline repeat differences, only the Guard Dog weapon entity
+changed. This third-party parse remains weaker evidence than a game load.
+
 The complete image also allowed a focused heavy-target search. References to
 `tag_spot_enemy_gen_character_heavy` and
 `tag_spot_enemy_anyfac_patrol_heavy` are in a hash-to-string lookup, not a
