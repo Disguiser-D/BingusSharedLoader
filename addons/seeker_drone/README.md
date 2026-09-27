@@ -201,3 +201,10 @@ G-60。v4 探针改为每 0.1 秒检查全部游戏世界，并且只在状态�
 说明 `create_game_object` 创建的是按 `.network_config` 类型同步的字段表，
 也不是自动初始化 Helldivers 2 玩法组件的入口。这些通用引擎 API 暂不能
 替代游戏自己的追踪雷投掷/生成流程。
+
+随后部署的只读 `network_probe.lua` 在任务中看到玩家投掷的原版 G-50，
+但 `Network.game_session()` 虽返回会话，
+`GameSession.unit_synchronizer(session)` 返回 `nil`；该 G-50 的
+`Unit.id(unit)` 也返回 `nil`。因此当前会话没有暴露可用于这枚追踪雷的
+`UnitSynchronizer`，不能凭通用同步器 API 为 Mod 创建或跟踪它。
+此结果只排除已观察到的 Lua 接口，不代表游戏内部没有自己的联机对象。
